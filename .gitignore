@@ -1,6 +1,8 @@
 **/__pycache__/
 venv
 .env
-ressources/
 Makefile
 bot.log
+ressources/auth.json
+ressources/channels.txt
+ressources/banned_words.txt

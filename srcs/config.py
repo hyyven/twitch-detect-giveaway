@@ -46,7 +46,11 @@ for name, val in required_vars.items():
 if missing:
 	raise RuntimeError("missing .env var")
 
-with open(TARGET_CHANNEL_FILE, 'r') as f:
-	TARGET_CHANNEL: List[str] = [line.strip().lower() for line in f if line.strip()]
-with open(BAN_WORDS_FILE, 'r') as f:
-	RAW_BAN_WORDS: List[str] = [line.strip() for line in f if line.strip()]
+try:
+	with open(TARGET_CHANNEL_FILE, 'r') as f:
+		TARGET_CHANNEL: List[str] = [line.strip().lower() for line in f if line.strip()]
+	with open(BAN_WORDS_FILE, 'r') as f:
+		RAW_BAN_WORDS: List[str] = [line.strip() for line in f if line.strip()]
+except Exception as e:
+	logging.error(f"can't find {TARGET_CHANNEL_FILE} or {BAN_WORDS_FILE}")
+	raise

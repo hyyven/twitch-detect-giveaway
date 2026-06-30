@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import aiohttp
-from typing import Any, Tuple, List
+from typing import Any, Tuple
 from collections import deque
 
 from config import TARGET_CHANNEL, RAW_BAN_WORDS, DISCORD_PING, WEBHOOK_URL, MAX_MESSAGES_HISTORY
@@ -16,12 +16,11 @@ def ban_word_init() -> Tuple[set[Tuple[str, str]], set[str]]:
 			logger.debug(f"line:{line}")
 			line_split: list[str] = line.split(':', 1)
 			if len(line_split) == 1:
-				logger.debug(f"skipping malformed banword line:{line}")
 				ban_words_global.add(line.strip().lower())
-				continue
-			elif len(line_split) != 2:
-				continue
-			ban_words_channels.add((line_split[0].strip().lower(), line_split[1].strip().lower()))
+			elif len(line_split) == 2:
+				ban_words_channels.add((line_split[0].strip().lower(), line_split[1].strip().lower()))
+			else:
+				logger.debug(f"skipping malformed banword line:{line}")
 	except Exception as e:
 		logger.error(f"failed to load ban words: {e}")
 		raise
