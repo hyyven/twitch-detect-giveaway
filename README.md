@@ -8,6 +8,20 @@ The bot periodically checks the live status of the target channels and dynamical
 
 To run this project, you need to rename `.env_exemple` in `.env` and fill in the values. Here is a breakdown of each constant:
 
+### Python
+- Setup env:
+``` bash
+python3 -m venv venv && source venv/bin/activate
+```
+- Install requirements:
+``` bash
+pip install -r requirements.txt
+```
+- Launch
+``` bash
+python3 srcs/scrapper.py
+```
+
 ### Twitch api credentials
 To get your app id and secret, you must register a developer application on twitch. You can follow the [official twitch tuto](https://dev.twitch.tv/docs/authentication/register-app) to create one.
 - `TWITCH_APP_ID`: The client id of your twitch developer application required to authenticate and use the twitch api.
