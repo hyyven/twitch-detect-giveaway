@@ -48,7 +48,7 @@ if missing:
 
 try:
 	with open(TARGET_CHANNEL_FILE, 'r') as f:
-		TARGET_CHANNEL: List[str] = [line.strip().lower() for line in f if line.strip()]
+		TARGET_CHANNEL: set[str] = set(line.strip().lower() for line in f if line.strip())
 	with open(BAN_WORDS_FILE, 'r') as f:
 		RAW_BAN_WORDS: List[str] = [line.strip() for line in f if line.strip()]
 except Exception as e:

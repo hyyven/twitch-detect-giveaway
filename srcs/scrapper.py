@@ -1,24 +1,23 @@
 import asyncio
 import logging
-from typing import Any, Tuple, List
+from typing import Any, Tuple
 from twitchAPI.twitch import Twitch
 from twitchAPI.chat import Chat, ChatEvent
 
-from utils import ban_word_init, init_struct, wait_chat_ready
+from utils import ban_word_init, init_struct, wait_chat_ready, manage_failed_join
 from auth import on_token_refresh, handle_authentication
 from config import APP_ID, APP_SECRET, TARGET_CHANNEL, MAX_HELIX_PAGE
 from process_messages import make_on_message
 
 logger = logging.getLogger(__name__)
 
-UNIVERSE_SET = set(TARGET_CHANNEL)
-
 async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str], data: dict[str, dict[str, Any]]) -> None:
 	await wait_chat_ready(chat)
 	try:
 		live_set = set()
-		for i in range(0, len(TARGET_CHANNEL), MAX_HELIX_PAGE):
-			subset = TARGET_CHANNEL[i:i + MAX_HELIX_PAGE]
+		target_list = list(TARGET_CHANNEL)		# convert set to list to slice after 
+		for i in range(0, len(target_list), MAX_HELIX_PAGE):
+			subset = target_list[i:i + MAX_HELIX_PAGE]		# slice to respect twitch limit
 			try:
 				streams = twitch.get_streams(user_login=subset)		# return info of channels (subnet) in live only
 				async for s in streams:
@@ -27,8 +26,9 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 				logger.error(f"failed to get streams for subset:{subset} error:{e}")
 				return
 			await asyncio.sleep(0)		# don't block other async tasks
-		to_join = list((live_set - connected) & UNIVERSE_SET)
-		to_leave = list((connected - live_set) & UNIVERSE_SET)
+		# convert to list because join_room() and leave_room() are waiting a list not a set
+		to_join = list((live_set - connected) & TARGET_CHANNEL)		# first: remove already connected channels; second: remove channels not in TARGET_CHANNEL
+		to_leave = list((connected - live_set) & TARGET_CHANNEL)		# first: remove channels still in live; idem
 		if to_leave:
 			try:
 				await chat.leave_room(to_leave)		# leave_room() return nothing, can't fail
@@ -44,6 +44,9 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 					if c not in failed_joins:
 						connected.add(c)		# add channel to connected set
 						data[c]["is_connected"] = True
+						manage_failed_join(data, c, True)		# reset failed_joins counter
+					else:
+						manage_failed_join(data, c, False)
 			except Exception as e:
 				logger.error(f"join rooms failed {to_join}: {e}")
 	except Exception as e:
@@ -65,7 +68,7 @@ async def scrapper(ban_words_channels: set[Tuple[str, str]], ban_words_global: s
 			try:
 				if chat.is_ready():
 					await update_channels_state(twitch, chat, connected, data)
-				await asyncio.sleep(10)		# check every 10 seconds to join/leave channels
+				await asyncio.sleep(60)		# check every 60 seconds to join/leave channels
 			except Exception as e:
 				logger.error(f"error in main loop: {e}")
 				raise e
