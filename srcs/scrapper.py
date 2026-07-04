@@ -8,6 +8,7 @@ from utils import ban_word_init, init_struct, wait_chat_ready
 from auth import on_token_refresh, handle_authentication
 from config import APP_ID, APP_SECRET, TARGET_CHANNEL, MAX_HELIX_PAGE
 from process_messages import make_on_message
+from dashboard.server import dashboard
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ async def main():
 		data = init_struct()
 		async with asyncio.TaskGroup() as tg:
 			task1 = tg.create_task(scrapper(ban_words_channels, ban_words_global, data))
+			task2 = tg.create_task(dashboard(data))
 	except ExceptionGroup as eg:
 		logger.critical(f"big error: {eg}")
 		raise
