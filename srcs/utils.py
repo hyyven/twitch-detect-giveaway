@@ -35,8 +35,21 @@ def init_struct() -> dict[str, dict[str, Any]]:
 		channel_data["last_notif_time"] = 0
 		channel_data["message_history"] = deque(maxlen=MAX_MESSAGES_HISTORY)
 		channel_data["is_connected"] = False
+		channel_data["failed_joins"] = 0
 		data[channel_name] = channel_data
 	return (data)
+
+def manage_failed_join(data: dict[str, dict[str, Any]], channel_name: str, flag: bool) -> None:
+	if flag:		# if join succeeded
+		data[channel_name]["failed_joins"] = 0		# reset counter
+	else:
+		data[channel_name]["failed_joins"] += 1
+		if data[channel_name]["failed_joins"] >= 3:  # if failed to join 3 times
+			logger.error(f"failed to join {channel_name} 3 times. won't try again")
+			TARGET_CHANNEL.discard(channel_name)		# remove channel
+		else:
+			logger.error(f"failed to join room: {channel_name}")
+
 
 async def send_discord_notification(channel_name: str, command: str):
 	payload = {"content": f"<@&{DISCORD_PING}> detected : https://twitch.tv/{channel_name} command : {command}"}
