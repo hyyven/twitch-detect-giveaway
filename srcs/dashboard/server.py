@@ -6,6 +6,8 @@ from aiohttp import web
 from collections import deque
 from typing import Any
 
+from config import NOTIF_COOLDOWN
+
 logger = logging.getLogger(__name__)
 
 class DataEncoder(json.JSONEncoder):
@@ -28,7 +30,11 @@ async def handle_script(request: web.Request) -> web.FileResponse:
 
 async def handle_data(request: web.Request) -> web.Response:
 	bot_data: dict = request.app['bot_data']
-	return (web.json_response(bot_data, dumps=lambda obj: json.dumps(obj, cls=DataEncoder)))
+	res = {
+		"channels": bot_data,
+		"cooldown": NOTIF_COOLDOWN
+	}
+	return (web.json_response(res, dumps=lambda obj: json.dumps(obj, cls=DataEncoder)))
 
 async def dashboard(data: dict) -> None:
 	app: web.Application = web.Application()

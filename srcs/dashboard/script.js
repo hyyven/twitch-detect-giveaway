@@ -5,7 +5,9 @@ async function updateData()
 	try
 	{
 		const response = await fetch('/api/data');
-		const data = await response.json();
+		const resData = await response.json();
+		const data = resData.channels;
+		const cooldownMax = resData.cooldown;
 		const currentChannels = new Set(Object.keys(data));
 
 		for (const [channel, info] of Object.entries(data))
@@ -32,15 +34,16 @@ async function updateData()
 			const statusEl = document.getElementById(`status-${channel}`);
 			statusEl.className = info.is_connected ? 'status online' : 'status offline';
 			const cooldownEl = document.getElementById(`cooldown-${channel}`);
-			if (info.last_notif_time === 0)
+			const elapsed = (Date.now() / 1000) - info.last_notif_time;
+			const remaining = cooldownMax - elapsed;
+			if (info.last_notif_time === 0 || remaining <= 0)
 			{
 				cooldownEl.textContent = 'cd: ready';
 				cooldownEl.style.color = '#4caf50';
 			}
 			else
 			{
-				const elapsed = (Date.now() / 1000) - info.last_notif_time;
-				cooldownEl.textContent = `cd: ${Math.round(elapsed)}s ago`;
+				cooldownEl.textContent = `cd: ${Math.round(remaining)}s`;
 				cooldownEl.style.color = '#f44336';
 			}
 			const countEl = document.getElementById(`msg-count-${channel}`);
