@@ -19,8 +19,7 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 		actually_connected = {c for c in connected if chat.is_in_room(c)}
 		failed_reconnects = connected - actually_connected
 		for c in failed_reconnects:
-			logger.error(f"failed to join room: {c}")
-			manage_failed_join(data, c, False)
+			logger.error(f"channel unsync : {c}")
 			data[c]["is_connected"] = False
 		connected.intersection_update(actually_connected)		# keep channels that are in "connected" and in "actually_connected"
 		### 
