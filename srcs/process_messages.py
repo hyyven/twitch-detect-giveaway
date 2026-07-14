@@ -9,6 +9,7 @@ from utils import send_discord_notification
 from config import NBR_OF_OCCURENCE, NOTIF_COOLDOWN
 
 logger = logging.getLogger(__name__)
+g_tasks = set()		# anti garbage collector
 
 def is_in_cooldown(channel_data: dict[str, Any]) -> bool:
 	current_time: float = time()
@@ -51,6 +52,8 @@ def make_on_message(ban_words_channels: set[Tuple[str, str]], ban_words_global: 
 		detected_cmd = detect_giveaway(channel_data["message_history"])
 		if detected_cmd and not is_in_cooldown(channel_data):
 			channel_data["message_history"].clear()		# reset history to avoid multiple notifications for same giveaway
-			asyncio.create_task(send_discord_notification(channel_name, detected_cmd))
+			task = asyncio.create_task(send_discord_notification(channel_name, detected_cmd))
+			g_tasks.add(task)		# anti garbage collector
+			task.add_done_callback(g_tasks.discard)
 		return (None)
 	return (on_message)

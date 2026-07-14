@@ -38,7 +38,7 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 			await asyncio.sleep(0)		# don't block other async tasks
 		# convert to list because join_room() and leave_room() are waiting a list not a set
 		to_join = list((live_set - connected) & TARGET_CHANNEL)		# first: remove already connected channels; second: remove channels not in TARGET_CHANNEL
-		to_leave = list((connected - live_set) & TARGET_CHANNEL)		# first: remove channels still in live; idem
+		to_leave = list(connected - live_set)		# remove channels still in live
 		if to_leave:
 			try:
 				await chat.leave_room(to_leave)		# leave_room() return nothing, can't fail
