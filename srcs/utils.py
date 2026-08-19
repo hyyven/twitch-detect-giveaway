@@ -45,10 +45,10 @@ def manage_failed_join(data: dict[str, dict[str, Any]], channel_name: str, flag:
 	else:
 		data[channel_name]["failed_joins"] += 1
 		if data[channel_name]["failed_joins"] >= 3:  # if failed to join 3 times
-			logger.error(f"failed to join {channel_name} 3 times. won't try again")
+			logger.warning(f"failed to join {channel_name} 3 times. won't try again")
 			TARGET_CHANNEL.discard(channel_name)		# remove channel
 		else:
-			logger.error(f"failed to join room: {channel_name}")
+			logger.warning(f"failed to join room: {channel_name}")
 
 
 async def send_discord_notification(channel_name: str, command: str):

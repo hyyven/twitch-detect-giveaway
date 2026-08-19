@@ -13,7 +13,8 @@ from dashboard.server import dashboard
 logger = logging.getLogger(__name__)
 
 async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str], data: dict[str, dict[str, Any]]) -> None:
-	await wait_chat_ready(chat)
+	if not await wait_chat_ready(chat):
+		raise RuntimeError("chat not ready after waiting")
 	try:
 		### security for when twitch api remove the bot from every rooms for some reason
 		actually_connected = {c for c in connected if chat.is_in_room(c)}
@@ -34,7 +35,7 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 					live_set.add(s.user_login.lower())
 			except Exception as e:
 				logger.error(f"failed to get streams for subset:{subset} error:{e}")
-				return
+				raise e
 			await asyncio.sleep(0)		# don't block other async tasks
 		# convert to list because join_room() and leave_room() are waiting a list not a set
 		to_join = list((live_set - connected) & TARGET_CHANNEL)		# first: remove already connected channels; second: remove channels not in TARGET_CHANNEL
@@ -47,6 +48,7 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 					data[c]["is_connected"] = False
 			except Exception as e:
 				logger.error(f"leave rooms failed {to_leave}: {e}")
+				raise e
 		if to_join:
 			try:
 				failed_joins = await chat.join_room(to_join)		# join_room() return list of failed joins
@@ -59,39 +61,58 @@ async def update_channels_state(twitch: Twitch, chat: Chat, connected: set[str],
 						manage_failed_join(data, c, False)
 			except Exception as e:
 				logger.error(f"join rooms failed {to_join}: {e}")
+				raise e
 	except Exception as e:
 		logger.error(f"error in update_channels_state:{e}")
+		raise e
 
 async def scrapper(ban_words_channels: set[Tuple[str, str]], ban_words_global: set[str], data: dict[str, dict[str, Any]]):
-	twitch = None
-	chat = None
-	connected: set[str] = set()
-	try:
-		twitch = await Twitch(APP_ID, APP_SECRET)
-		twitch.user_auth_refresh_callback = on_token_refresh
-		await handle_authentication(twitch)
-		chat = await Chat(twitch)
-		chat.register_event(ChatEvent.MESSAGE, make_on_message(ban_words_channels, ban_words_global, data))		# call make_on_message on every message received
-		chat.start()
-		logger.info("ctrl+c to stop")
-		while True:
-			try:
-				if chat.is_ready():
+	while True:
+		twitch = None
+		chat = None
+		connected: set[str] = set()
+		for c in data:
+			data[c]["is_connected"] = False
+			data[c]["failed_joins"] = 0
+		try:
+			logger.info("connecting to twitch api and chat")
+			twitch = await Twitch(APP_ID, APP_SECRET)
+			twitch.user_auth_refresh_callback = on_token_refresh
+			await handle_authentication(twitch)
+			chat = await Chat(twitch, callback_loop=asyncio.get_running_loop())
+			chat.register_event(ChatEvent.MESSAGE, make_on_message(ban_words_channels, ban_words_global, data))		# call make_on_message on every message received
+			chat.start()
+			logger.info("ctrl+c to stop")
+			consecutive_errors = 0
+			while True:
+				try:
 					await update_channels_state(twitch, chat, connected, data)
-				await asyncio.sleep(60)		# check every 60 seconds to join/leave channels
-			except Exception as e:
-				logger.error(f"error in main loop: {e}")
-				raise e
-	except asyncio.CancelledError:
-		logger.info("scrapper task cancelled")
-		if chat:
-			chat.stop()
-		if twitch:
-			await twitch.close()
-		raise
-	except Exception as e:
-		logger.error(f"error in scrapper loop: {e}")
-		raise e
+					consecutive_errors = 0
+					await asyncio.sleep(60)		# check every 60 seconds to join/leave channels
+				except Exception as e:
+					logger.error(f"error in main loop: {e}")
+					consecutive_errors += 1
+					if "bound to a different event loop" in str(e) or "closing transport" in str(e) or consecutive_errors >= 3:
+						logger.warning("session corrupted or repeated timeouts: restarting twitch clients...")
+						break
+					await asyncio.sleep(10)
+		except asyncio.CancelledError:
+			logger.info("scrapper task cancelled")
+			raise
+		except Exception as e:
+			logger.error(f"error in scrapper loop: {e}. retrying in 15s...")
+			await asyncio.sleep(15)
+		finally:
+			if chat:
+				try:
+					chat.stop()
+				except Exception as e:
+					logger.debug(f"error stopping chat in recovery: {e}")
+			if twitch:
+				try:
+					await twitch.close()
+				except Exception as e:
+					logger.debug(f"error closing twitch session in recovery: {e}")
 
 async def main():
 	try:

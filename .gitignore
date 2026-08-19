@@ -2,7 +2,7 @@
 venv
 .env
 Makefile
-bot.log
+*.log
 ressources/auth.json
 ressources/channels.txt
 ressources/banned_words.txt

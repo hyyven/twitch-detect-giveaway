@@ -18,17 +18,33 @@ async function updateData()
 				card = document.createElement('div');
 				card.id = `card-${channel}`;
 				card.className = 'card';
-				card.innerHTML = `
-					<div>
-						<span id="status-${channel}" class="status"></span>
-						<strong>${channel}</strong>
-					</div>
-					<div class="stats">
-						<span id="cooldown-${channel}">-</span>
-						<span id="msg-count-${channel}">0 msg</span>
-					</div>
-					<div id="history-${channel}" class="history"></div>
-				`;
+				const headerDiv = document.createElement('div');
+				const statusSpan = document.createElement('span');
+				statusSpan.id = `status-${channel}`;
+				statusSpan.className = 'status';
+				const channelStrong = document.createElement('strong');
+				channelStrong.textContent = channel;
+				headerDiv.appendChild(statusSpan);
+				headerDiv.appendChild(channelStrong);
+
+				const statsDiv = document.createElement('div');
+				statsDiv.className = 'stats';
+				const cooldownSpan = document.createElement('span');
+				cooldownSpan.id = `cooldown-${channel}`;
+				cooldownSpan.textContent = '-';
+				const msgCountSpan = document.createElement('span');
+				msgCountSpan.id = `msg-count-${channel}`;
+				msgCountSpan.textContent = '0 msg';
+				statsDiv.appendChild(cooldownSpan);
+				statsDiv.appendChild(msgCountSpan);
+
+				const historyDiv = document.createElement('div');
+				historyDiv.id = `history-${channel}`;
+				historyDiv.className = 'history';
+
+				card.appendChild(headerDiv);
+				card.appendChild(statsDiv);
+				card.appendChild(historyDiv);
 				container.appendChild(card);
 			}
 			const statusEl = document.getElementById(`status-${channel}`);
@@ -52,9 +68,14 @@ async function updateData()
 			const oldLen = parseInt(historyEl.dataset.len || "0", 10);
 			if (info.message_history.length !== oldLen)
 			{
-				historyEl.innerHTML = info.message_history
-					.map(msg => `<div class="history-item">${msg}</div>`)
-					.join('');
+				historyEl.replaceChildren();
+				for (const msg of info.message_history)
+				{
+					const item = document.createElement('div');
+					item.className = 'history-item';
+					item.textContent = msg;
+					historyEl.appendChild(item);
+				}
 				historyEl.dataset.len = info.message_history.length;
 			}
 		}
@@ -74,5 +95,5 @@ async function updateData()
 	}
 }
 
-setInterval(updateData, 500);
+setInterval(updateData, 2000);
 updateData();
